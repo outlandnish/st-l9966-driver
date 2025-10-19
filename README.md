@@ -10,9 +10,13 @@ A comprehensive Arduino/PlatformIO library for the STMicroelectronics L9966 Flex
 - **Flexible Pull Configurations** - Pull-up (VPRE, 5V_REF, VVAR), pull-down, or high-impedance
 - **Digital Input Reading** - Read all 15 channels as digital inputs
 - **ADC Sequencer** - Automatic sequential conversions for improved efficiency
+- **SYNC Pin Support** - Hardware synchronization for sequencer start (optional)
+- **SENT Interface** - Channels IO1-IO4 support SENT (Single Edge Nibble Transmission) protocol output
 - **Device Diagnostics** - General status, calibration, temperature, and voltage supply monitoring
 - **SPI Interface** - Fast communication with optional mutex support for thread safety
 - **Low Power Modes** - Wake/sleep configuration with mask support
+
+**Note:** SENT functionality is available in hardware but not yet implemented in this library. Contributions welcome!
 
 ## Installation
 
@@ -40,14 +44,24 @@ SCK      <---  SCK  (SPI)
 CS       <---  Any GPIO (e.g., D10)
 INT      --->  Any GPIO (e.g., D2)
 RST      <---  Any GPIO (e.g., D3)
+SYNC     <---  Any GPIO (optional, for sequencer sync)
 CTRL_CFG --->  GND or VDD (sets chip address)
 ```
+
+**Note:** SYNC pin is optional and only needed if you want external hardware synchronization of sequencer start. The pin has an internal 105kΩ pull-down resistor and 4.7µs glitch filter.
 
 ### Power Supply
 - VDD: 5V (typically)
 - VBSW: Battery voltage input
 - VI5V: 5V reference input
 - VIX: Variable voltage reference
+
+### SENT Interface (Optional)
+The L9966 has built-in SENT (Single Edge Nibble Transmission) support:
+- **IO_1 through IO_4** - Can function as SENT1-SENT4 channels
+- **SENT1_GTM1 through SENT4_GTM4** - Digital outputs for SENT channels
+
+SENT is an automotive sensor interface protocol for transmitting sensor data. The L9966 can route GTM (Generic Timer Module) signals to SENT outputs for sensor emulation. This functionality is not yet implemented in the library.
 
 ## Basic Usage
 
@@ -98,7 +112,7 @@ void loop() {
 
 ### Initialization
 
-#### `L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool hardware_address_high, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr)`
+#### `L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool hardware_address_high, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr, uint16_t sync = NC)`
 Constructor for L9966 instance.
 
 **Parameters:**
@@ -109,9 +123,10 @@ Constructor for L9966 instance.
 - `hardware_address_high` - Set to match CTRL_CFG pin (false=GND, true=VDD)
 - `take_spi` - Optional mutex acquire function for thread safety
 - `release_spi` - Optional mutex release function for thread safety
+- `sync` - Optional SYNC pin for hardware sequencer synchronization (default: NC)
 
 #### `void begin()`
-Initialize the L9966 device. Performs hardware reset and device detection.
+Initialize the L9966 device. Performs hardware reset and device detection. If SYNC pin is provided, configures it as an output (starts LOW).
 
 ### Configuration
 
@@ -153,11 +168,24 @@ Get the result of the last single conversion.
 #### `void setSequencerCommand(uint8_t channel, uint8_t next_channel, bool voltage_mode, L9966_PullupDivider pullup)`
 Configure a step in the sequencer.
 
-#### `void startSequencer(uint8_t start_channel, bool use_eu1 = true)`
+#### `void startSequencer(uint8_t start_channel, bool use_eu1 = true, bool sync_enable = false)`
 Start the automatic sequencer from specified channel.
+
+**Parameters:**
+- `start_channel` - Starting channel (1-15)
+- `use_eu1` - Use execution unit 1 (true) or unit 2 (false)
+- `sync_enable` - Enable SYNC pin synchronization (false=start immediately, true=wait for SYNC pulse)
+
+**SYNC Mode:**
+When `sync_enable=true`, the sequencer waits for a rising edge on the SYNC pin before starting. This allows external hardware synchronization. Call `triggerSync()` to start the sequencer, or provide an external signal to the SYNC pin.
 
 #### `void stopSequencer(bool eu1 = true)`
 Stop the sequencer.
+
+#### `void triggerSync()`
+Generate a rising edge pulse on the SYNC pin to trigger sequencer start (when sync_enable=true). Pulse width is 10µs, exceeding the 5.2µs glitch filter requirement.
+
+**Note:** Only effective when startSequencer() was called with sync_enable=true. SYNC pulses are ignored if sequencer is already running.
 
 #### `void copySequencerResults()`
 Copy sequencer results to result registers for reading.

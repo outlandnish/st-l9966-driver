@@ -224,7 +224,7 @@ struct L9966_DigitalInputStatus {
 
 class L9966 {
   private:
-    uint16_t cs, interrupt, reset;
+    uint16_t cs, interrupt, reset, sync;
     bool hardware_address_high;
 
     SPIClass *spi;
@@ -234,8 +234,8 @@ class L9966 {
     void packFrame(uint8_t address, uint16_t data, bool write, bool burst_mode, uint32_t &frame);
 
   public:
-    L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool hardware_address_high, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr)
-      : spi(spi), cs(cs), interrupt(interrupt), reset(reset), hardware_address_high(hardware_address_high), take_spi(take_spi), release_spi(release_spi) {}
+    L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool hardware_address_high, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr, uint16_t sync = NC)
+      : spi(spi), cs(cs), interrupt(interrupt), reset(reset), hardware_address_high(hardware_address_high), take_spi(take_spi), release_spi(release_spi), sync(sync) {}
     void begin();
 
     uint16_t transfer(uint8_t address, uint16_t data, bool write, bool burst_mode);
@@ -261,8 +261,9 @@ class L9966 {
 
     // Sequencer configuration (channels 1-15)
     void setSequencerCommand(uint8_t channel, uint8_t next_channel, bool voltage_mode, L9966_PullupDivider pullup);
-    void startSequencer(uint8_t start_channel, bool use_eu1 = true);
+    void startSequencer(uint8_t start_channel, bool use_eu1 = true, bool sync_enable = false);
     void stopSequencer(bool eu1 = true);
+    void triggerSync();  // Generate SYNC pulse to start sequencer (when sync_enable=true)
     L9966_ADCResult getSequencerResult(uint8_t channel);
     void copySequencerResults();
 

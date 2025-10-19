@@ -11,6 +11,13 @@ void L9966::begin() {
     // do something
   }, FALLING);
 
+  // setup SYNC pin if provided (optional - for sequencer synchronization)
+  // SYNC has internal pull-down, so configure as output to drive high when needed
+  if (sync != NC) {
+    pinMode(sync, OUTPUT);
+    digitalWrite(sync, LOW);  // Start low (L9966 has internal pull-down)
+  }
+
   // reset device
   pinMode(reset, OUTPUT);
   digitalWrite(reset, LOW);
@@ -253,19 +260,23 @@ void L9966::setSequencerCommand(uint8_t channel, uint8_t next_channel, bool volt
   transfer(L9966_SQNCR_CMD_1 + (channel - 1), reg_value, true, false);
 }
 
-void L9966::startSequencer(uint8_t start_channel, bool use_eu1) {
+void L9966::startSequencer(uint8_t start_channel, bool use_eu1, bool sync_enable) {
   if (start_channel < 1 || start_channel > 15) return;
 
   uint16_t ctrl_value = 0;
 
   if (use_eu1) {
     ctrl_value |= (start_channel & 0x0F) << 1;  // INIT_PC_EU1 bits 4:1
-    ctrl_value |= 1 << 6;  // EU1_SYNC_EN
-    ctrl_value |= 1;  // EU1_EN bit 0
+    if (sync_enable) {
+      ctrl_value |= 1 << 6;  // EU1_SYNC_EN - wait for SYNC pin rising edge to start
+    }
+    ctrl_value |= 1;  // EU1_EN bit 0 - enable sequencer
   } else {
     ctrl_value |= (start_channel & 0x0F) << 9;  // INIT_PC_EU2 bits 12:9
-    ctrl_value |= 1 << 14;  // EU2_SYNC_EN
-    ctrl_value |= 1 << 8;  // EU2_EN bit 8
+    if (sync_enable) {
+      ctrl_value |= 1 << 14;  // EU2_SYNC_EN - wait for SYNC pin rising edge to start
+    }
+    ctrl_value |= 1 << 8;  // EU2_EN bit 8 - enable sequencer
   }
 
   transfer(L9966_SQNCR_CTRL_REG, ctrl_value, true, false);
@@ -281,6 +292,16 @@ void L9966::stopSequencer(bool eu1) {
   }
 
   transfer(L9966_SQNCR_CTRL_REG, ctrl_value, true, false);
+}
+
+void L9966::triggerSync() {
+  if (sync != NC) {
+    // Generate rising edge pulse on SYNC pin
+    // Pulse must be > 5.2μs to pass glitch filter (typical 4.7μs)
+    digitalWrite(sync, HIGH);
+    delayMicroseconds(10);  // 10μs pulse width
+    digitalWrite(sync, LOW);
+  }
 }
 
 L9966_ADCResult L9966::getSequencerResult(uint8_t channel) {
