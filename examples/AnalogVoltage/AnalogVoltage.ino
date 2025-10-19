@@ -17,7 +17,7 @@
 #define INPUT_INTERRUPT 2
 #define INPUT_RESET 3
 
-// Create L9966 instance
+// Create L9966 instance (ctrl_cfg=false means CTRL_CFG pin tied to GND)
 SPIClass spi;
 L9966 l9966(&spi, INPUT_CS, INPUT_INTERRUPT, INPUT_RESET, false);
 

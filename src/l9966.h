@@ -225,7 +225,7 @@ struct L9966_DigitalInputStatus {
 class L9966 {
   private:
     uint16_t cs, interrupt, reset, sync;
-    bool hardware_address_high;
+    bool ctrl_cfg;
 
     SPIClass *spi;
     std::function<void(void)> take_spi;
@@ -234,8 +234,8 @@ class L9966 {
     void packFrame(uint8_t address, uint16_t data, bool write, bool burst_mode, uint32_t &frame);
 
   public:
-    L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool hardware_address_high, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr, uint16_t sync = NC)
-      : spi(spi), cs(cs), interrupt(interrupt), reset(reset), hardware_address_high(hardware_address_high), take_spi(take_spi), release_spi(release_spi), sync(sync) {}
+    L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool ctrl_cfg, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr, uint16_t sync = NC)
+      : spi(spi), cs(cs), interrupt(interrupt), reset(reset), ctrl_cfg(ctrl_cfg), take_spi(take_spi), release_spi(release_spi), sync(sync) {}
     void begin();
 
     uint16_t transfer(uint8_t address, uint16_t data, bool write, bool burst_mode);

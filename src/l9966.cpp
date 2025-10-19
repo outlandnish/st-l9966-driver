@@ -58,7 +58,7 @@ void L9966::packFrame(uint8_t address, uint16_t data, bool write, bool burst_mod
   // bit 31 = 1, bit 30 = CTRL_CFG, bit 29 = R/W, bit 28 = CLK_MON (0=burst mode, 1=normal), bit 27 - 20 = address, bit 19 - 17: X, bit 16: odd parity bit for instruction
   // bit 15: odd parity bit for data, bit 14 - 0: data / ignored if a read
   frame |= 1 << 31;
-  frame |= hardware_address_high << 30;
+  frame |= ctrl_cfg << 30;
   frame |= write << 29;
   frame |= (!burst_mode) << 28;  // Inverted: burst_mode=false -> CLK_MON=1 (normal single frame)
   frame |= address << 20;

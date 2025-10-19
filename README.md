@@ -112,7 +112,7 @@ void loop() {
 
 ### Initialization
 
-#### `L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool hardware_address_high, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr, uint16_t sync = NC)`
+#### `L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool ctrl_cfg, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr, uint16_t sync = NC)`
 Constructor for L9966 instance.
 
 **Parameters:**
@@ -120,7 +120,7 @@ Constructor for L9966 instance.
 - `cs` - Chip select pin
 - `interrupt` - Interrupt pin
 - `reset` - Reset pin
-- `hardware_address_high` - Set to match CTRL_CFG pin (false=GND, true=VDD)
+- `ctrl_cfg` - CTRL_CFG pin state (false=GND/address "10", true=VDD/address "11")
 - `take_spi` - Optional mutex acquire function for thread safety
 - `release_spi` - Optional mutex release function for thread safety
 - `sync` - Optional SYNC pin for hardware sequencer synchronization (default: NC)
