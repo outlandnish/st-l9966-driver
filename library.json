@@ -1,0 +1,31 @@
+{
+  "name": "L9966",
+  "version": "1.0.0",
+  "description": "Driver library for STMicroelectronics L9966 FlexInput analog input device for automotive applications",
+  "keywords": [
+    "L9966",
+    "STMicroelectronics",
+    "automotive",
+    "analog input",
+    "digital input",
+    "ADC",
+    "FlexInput",
+    "SPI"
+  ],
+  "authors": [
+    {
+      "name": "outlandnish",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/outlandnish/st-l9966-driver.git"
+  },
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "*",
+  "dependencies": {
+    "SPI": "*"
+  }
+}
