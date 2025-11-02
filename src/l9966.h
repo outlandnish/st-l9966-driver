@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Arduino.h"
 #include "SPI.h"
 #include "functional"
@@ -230,13 +232,17 @@ class L9966 {
     SPIClass *spi;
     std::function<void(void)> take_spi;
     std::function<void(void)> release_spi;
+    std::function<void(uint16_t)> interrupt_callback;  // Callback for input changes
+
+    static L9966* instance;  // For ISR access
 
     void packFrame(uint8_t address, uint16_t data, bool write, bool burst_mode, uint32_t &frame);
+    static void isrHandler();  // Static ISR handler
 
   public:
-    L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool ctrl_cfg, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr, uint16_t sync = NC)
+    L9966(SPIClass *spi, uint16_t cs, uint16_t interrupt, uint16_t reset, bool ctrl_cfg, std::function<void(void)> take_spi = nullptr, std::function<void(void)> release_spi = nullptr, uint32_t sync = NC)
       : spi(spi), cs(cs), interrupt(interrupt), reset(reset), ctrl_cfg(ctrl_cfg), take_spi(take_spi), release_spi(release_spi), sync(sync) {}
-    void begin();
+    bool begin();
 
     uint16_t transfer(uint8_t address, uint16_t data, bool write, bool burst_mode);
 
@@ -273,4 +279,11 @@ class L9966 {
     // Wake/Sleep configuration
     void setWakeMask(uint16_t channel_mask);
     void setSleepConfig(uint16_t target_levels);
+    uint16_t getWakeSource();  // Read which channels triggered wake/interrupt
+
+    // Interrupt handling
+    void setInterruptCallback(std::function<void(uint16_t)> callback);
+    void enableInterrupts(uint16_t channel_mask);  // Enable interrupts for specified channels
+    void disableInterrupts();  // Disable all interrupts
+    void handleInterrupt();  // Called by ISR to process interrupt
 };

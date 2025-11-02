@@ -9,6 +9,7 @@ A comprehensive Arduino/PlatformIO library for the STMicroelectronics L9966 Flex
 - **Programmable Current Sources** - 7.5µA to 20mA with multiple preset values
 - **Flexible Pull Configurations** - Pull-up (VPRE, 5V_REF, VVAR), pull-down, or high-impedance
 - **Digital Input Reading** - Read all 15 channels as digital inputs
+- **Hardware Interrupts** - Efficient event-driven monitoring of input state changes
 - **ADC Sequencer** - Automatic sequential conversions for improved efficiency
 - **SYNC Pin Support** - Hardware synchronization for sequencer start (optional)
 - **SENT Interface** - Channels IO1-IO4 support SENT (Single Edge Nibble Transmission) protocol output
@@ -203,6 +204,51 @@ Read digital state of all channels.
 #### `uint16_t getDigitalInputStatusLastPolling()`
 Read digital states from last automatic polling.
 
+### Interrupt Handling
+
+The L9966 can trigger hardware interrupts when input channels change state, providing efficient event-driven input monitoring instead of polling.
+
+#### `void setInterruptCallback(std::function<void(uint16_t)> callback)`
+Register a callback function to be called when any enabled channel changes state.
+
+**Parameters:**
+- `callback` - Function to call with `wake_sources` bitmask indicating which channels triggered
+
+**Example:**
+```cpp
+void onInputChange(uint16_t wake_sources) {
+  Serial.print("Channels changed: 0x");
+  Serial.println(wake_sources, HEX);
+
+  // Check specific channels
+  if (wake_sources & (1 << 3)) {  // Channel 4 changed
+    Serial.println("Clutch switch changed!");
+  }
+}
+```
+
+#### `void enableInterrupts(uint16_t channel_mask)`
+Enable hardware interrupts for specified channels. The L9966's INT pin will assert (falling edge) when any enabled channel changes state.
+
+**Parameters:**
+- `channel_mask` - Bitmask of channels to monitor (bit 0 = channel 1, bit 1 = channel 2, etc.)
+
+**Example:**
+```cpp
+// Monitor channels 4, 5, 10, 11 (clutch, AC switch, brake switches)
+uint16_t mask = (1 << 3) | (1 << 4) | (1 << 9) | (1 << 10);
+l9966.setInterruptCallback(onInputChange);
+l9966.enableInterrupts(mask);
+```
+
+#### `void disableInterrupts()`
+Disable all hardware interrupts and detach the ISR.
+
+#### `void handleInterrupt()`
+Process an interrupt (called automatically by ISR). Reads wake source register and invokes the user callback. Normally you don't need to call this directly.
+
+**Note:** The INT pin is active-low and triggers on a falling edge. Make sure the INT pin is properly connected to your microcontroller's interrupt-capable GPIO.
+
 ### Device Information & Diagnostics
 
 #### `bool whoami()`
@@ -255,6 +301,7 @@ See the `examples/` directory for complete working examples:
 - **AnalogVoltage** - Measure analog voltages (0-5V sensors)
 - **ResistanceMeasurement** - Read resistance values (NTC thermistors, resistor ladders)
 - **SequencerMode** - Continuous multi-channel ADC conversions
+- **HardwareInterrupt** - Event-driven input monitoring using hardware interrupts
 
 ## Common Applications
 

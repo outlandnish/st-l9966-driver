@@ -1,15 +1,17 @@
 #include "l9966.h"
 
-void L9966::begin() {
+// Static instance pointer for ISR access
+L9966* L9966::instance = nullptr;
+
+bool L9966::begin() {
+  // Set static instance pointer for ISR
+  instance = this;
   // setup chip select
   pinMode(cs, OUTPUT);
   digitalWrite(cs, HIGH);
 
-  // attach input interrupt
+  // setup interrupt pin (ISR will be attached when enableInterrupts() is called)
   pinMode(interrupt, INPUT);
-  attachInterrupt(digitalPinToInterrupt(interrupt), []() {
-    // do something
-  }, FALLING);
 
   // setup SYNC pin if provided (optional - for sequencer synchronization)
   // SYNC has internal pull-down, so configure as output to drive high when needed
@@ -25,30 +27,7 @@ void L9966::begin() {
   digitalWrite(reset, HIGH);
   delay(10);
 
-  if (whoami()) {
-    Serial.println("L9966 detected");
-
-    // check general status
-    auto gsr = getGeneralStatus();
-    Serial.print("Configuration reset: ");
-    Serial.println(gsr.configuration_reset);
-    Serial.print("Using calibrated ADC: ");
-    Serial.println(gsr.using_calibrated_adc);
-    Serial.print("Calibration fault: ");
-    Serial.println(gsr.calibration_fault);
-    Serial.print("Trim fault: ");
-    Serial.println(gsr.trim_fault);
-    Serial.print("Over temperature fault mask enabled: ");
-    Serial.println(gsr.over_temperature_fault_mask_enabed);
-    Serial.print("Entered wakeup event: ");
-    Serial.println(gsr.entered_wakeup_event);
-    Serial.print("Voltage supply fault: ");
-    Serial.println(gsr.voltage_supply_fault);
-    Serial.print("Over temperature fault: ");
-    Serial.println(gsr.over_temperature_fault);
-  } else {
-    Serial.println("L9966 not detected");
-  }
+  return whoami();
 }
 
 void L9966::packFrame(uint8_t address, uint16_t data, bool write, bool burst_mode, uint32_t &frame) {
@@ -342,4 +321,45 @@ void L9966::setWakeMask(uint16_t channel_mask) {
 
 void L9966::setSleepConfig(uint16_t target_levels) {
   transfer(L9966_SLEEP_CONFIG_REG, target_levels & 0x7FFF, true, false);
+}
+
+uint16_t L9966::getWakeSource() {
+  return transfer(L9966_WAK_CONFIG_REG, NULL, false, false) & 0x7FFF;
+}
+
+void L9966::setInterruptCallback(std::function<void(uint16_t)> callback) {
+  interrupt_callback = callback;
+}
+
+void L9966::enableInterrupts(uint16_t channel_mask) {
+  // Configure wake mask to trigger INT pin on specified channels
+  setWakeMask(channel_mask);
+
+  // Attach hardware interrupt to INT pin (falling edge - INT pin is active low)
+  attachInterrupt(digitalPinToInterrupt(interrupt), isrHandler, FALLING);
+}
+
+void L9966::disableInterrupts() {
+  // Detach hardware interrupt
+  detachInterrupt(digitalPinToInterrupt(interrupt));
+
+  // Clear wake mask
+  setWakeMask(0x0000);
+}
+
+void L9966::isrHandler() {
+  // Static ISR handler - calls handleInterrupt() on the instance
+  if (instance) {
+    instance->handleInterrupt();
+  }
+}
+
+void L9966::handleInterrupt() {
+  // Read which channels triggered the wake/interrupt
+  uint16_t wake_sources = getWakeSource();
+
+  // Call user callback if registered
+  if (interrupt_callback && wake_sources) {
+    interrupt_callback(wake_sources);
+  }
 }
